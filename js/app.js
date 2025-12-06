@@ -7,6 +7,12 @@ let currentView = 'list';
 let listMode = 'focus'; // 'list' or 'focus'
 let currentExerciseId = null;
 
+// Timer State
+let timerInterval = null;
+let timeLeft = 0;
+let isTimerRunning = false;
+let audioContext = null;
+
 // Utils
 const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -24,6 +30,57 @@ const addLog = (id, data) => {
         data
     });
     localStorage.setItem(`logs_${id}`, JSON.stringify(logs));
+};
+
+// Stopwatch Logic
+const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+window.startTimer = () => {
+    console.log('startTimer called', { isTimerRunning, timeLeft });
+    if (isTimerRunning) return;
+    isTimerRunning = true;
+
+    timerInterval = setInterval(() => {
+        timeLeft++;
+        console.log('tick', timeLeft);
+        const display = document.getElementById('timer-display');
+        if (display) display.textContent = formatTime(timeLeft);
+    }, 1000);
+
+    updateTimerUI();
+};
+
+window.pauseTimer = () => {
+    isTimerRunning = false;
+    clearInterval(timerInterval);
+    updateTimerUI();
+};
+
+window.resetTimer = () => {
+    window.pauseTimer();
+    timeLeft = 0;
+    const display = document.getElementById('timer-display');
+    if (display) display.textContent = formatTime(timeLeft);
+    updateTimerUI();
+};
+
+const updateTimerUI = () => {
+    const startBtn = document.getElementById('btn-start');
+    const pauseBtn = document.getElementById('btn-pause');
+    if (!startBtn || !pauseBtn) return;
+
+    if (isTimerRunning) {
+        startBtn.style.display = 'none';
+        pauseBtn.style.display = 'inline-block';
+    } else {
+        startBtn.style.display = 'inline-block';
+        pauseBtn.style.display = 'none';
+        startBtn.textContent = timeLeft > 0 ? 'Resume' : 'Start';
+    }
 };
 
 // Views
@@ -60,6 +117,7 @@ const renderDetail = (id) => {
     if (!ex) return '<div>Exercise not found</div>';
 
     const logs = getLogs(id);
+    const defaultTime = ex.defaultDuration || 60;
 
     // Dynamic inputs based on type
     let inputHtml = '';
@@ -106,6 +164,18 @@ const renderDetail = (id) => {
                     ${ex.instructions.map(i => `<li>${i}</li>`).join('')}
                 </ul>
             </div>
+            
+            <div class="card">
+                <div class="card-title">Timer</div>
+                <div class="timer-container">
+                    <div id="timer-display" class="timer-display">00:00</div>
+                    <div class="timer-controls">
+                        <button id="btn-start" class="btn btn-timer">Start</button>
+                        <button id="btn-pause" class="btn btn-timer pause" style="display:none">Pause</button>
+                         <button id="btn-reset" class="btn btn-timer pause">Reset</button>
+                    </div>
+                </div>
+            </div>
 
             <div class="card">
                 <div class="card-title">Log Session</div>
@@ -139,14 +209,17 @@ const router = () => {
     view.scrollTop = 0;
     window.scrollTo(0, 0);
 
-    // Reset scroll
-    view.scrollTop = 0;
-    window.scrollTo(0, 0);
-
     if (!hash) {
         view.innerHTML = renderList();
     } else {
         view.innerHTML = renderDetail(hash);
+        // Reset timer logic
+        const ex = exercises.find(e => e.id === hash);
+        if (ex) {
+            if (ex) {
+                window.resetTimer();
+            }
+        }
     }
 
     // Ensure separate fade-in if needed, but synchronous for now
@@ -180,6 +253,20 @@ window.toggleViewMode = () => {
     listMode = listMode === 'list' ? 'focus' : 'list';
     router();
 };
+
+// Event Delegation for Timer
+app.addEventListener('click', (e) => {
+    const target = e.target.closest('button');
+    if (!target) return;
+
+    if (target.id === 'btn-start') {
+        window.startTimer();
+    } else if (target.id === 'btn-pause') {
+        window.pauseTimer();
+    } else if (target.id === 'btn-reset') {
+        window.resetTimer();
+    }
+});
 
 window.addEventListener('hashchange', router);
 window.addEventListener('load', router);
