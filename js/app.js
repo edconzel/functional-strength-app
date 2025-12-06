@@ -185,4 +185,8 @@ window.toggleViewMode = () => {
 };
 
 window.addEventListener('hashchange', router);
-window.addEventListener('load', router);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', router);
+} else {
+    router();
+}

@@ -8,38 +8,28 @@ export class StopwatchTimer extends HTMLElement {
 
     connectedCallback() {
         this.render();
-        this.attachListeners();
+        // Event Delegation: One listener for the whole component
+        this.addEventListener('click', (e) => this.handleAction(e));
+        this.addEventListener('touchstart', (e) => this.handleAction(e), { passive: false });
     }
 
-    disconnectedCallback() {
-        this.pause();
+    handleAction(e) {
+        const btn = e.target.closest('.btn-timer');
+        if (!btn) return;
+
+        // Prevent ghost clicks if touch
+        if (e.type === 'touchstart') e.preventDefault();
+
+        if (btn.classList.contains('btn-start')) {
+            this.start();
+        } else if (btn.classList.contains('btn-pause')) {
+            this.pause();
+        } else if (btn.classList.contains('btn-reset')) {
+            this.reset();
+        }
     }
 
-    formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    render() {
-        this.innerHTML = `
-            <div class="timer-container">
-                <div class="timer-display">${this.formatTime(this.timeLeft)}</div>
-                <div class="timer-controls">
-                    <button class="btn btn-timer btn-start">Start</button>
-                    <button class="btn btn-timer btn-pause" style="display:none">Pause</button>
-                    <button class="btn btn-timer btn-reset">Reset</button>
-                </div>
-            </div>
-        `;
-        this.updateUI();
-    }
-
-    attachListeners() {
-        this.querySelector('.btn-start').addEventListener('click', () => this.start());
-        this.querySelector('.btn-pause').addEventListener('click', () => this.pause());
-        this.querySelector('.btn-reset').addEventListener('click', () => this.reset());
-    }
+    // attachListeners removed as it is no longer used
 
     start() {
         if (this.isRunning) return;
