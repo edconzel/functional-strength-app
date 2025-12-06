@@ -338,6 +338,11 @@ label {
 }
 
 /* Timer Styles */
+stopwatch-timer {
+    display: block;
+    width: 100%;
+}
+
 .timer-container {
     text-align: center;
     margin-bottom: 24px;

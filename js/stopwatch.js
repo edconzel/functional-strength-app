@@ -8,9 +8,6 @@ export class StopwatchTimer extends HTMLElement {
 
     connectedCallback() {
         this.render();
-        // Event Delegation: One listener for the whole component
-        this.addEventListener('click', (e) => this.handleAction(e));
-        this.addEventListener('touchstart', (e) => this.handleAction(e), { passive: false });
     }
 
     disconnectedCallback() {
@@ -28,29 +25,13 @@ export class StopwatchTimer extends HTMLElement {
             <div class="timer-container">
                 <div class="timer-display">${this.formatTime(this.timeLeft)}</div>
                 <div class="timer-controls">
-                    <button class="btn btn-timer btn-start">Start</button>
-                    <button class="btn btn-timer btn-pause" style="display:none">Pause</button>
-                    <button class="btn btn-timer btn-reset">Reset</button>
+                    <button class="btn btn-timer btn-start" onclick="this.closest('stopwatch-timer').start()">Start</button>
+                    <button class="btn btn-timer btn-pause" style="display:none" onclick="this.closest('stopwatch-timer').pause()">Pause</button>
+                    <button class="btn btn-timer btn-reset" onclick="this.closest('stopwatch-timer').reset()">Reset</button>
                 </div>
             </div>
         `;
         this.updateUI();
-    }
-
-    handleAction(e) {
-        const btn = e.target.closest('.btn-timer');
-        if (!btn) return;
-
-        // Prevent ghost clicks if touch
-        if (e.type === 'touchstart') e.preventDefault();
-
-        if (btn.classList.contains('btn-start')) {
-            this.start();
-        } else if (btn.classList.contains('btn-pause')) {
-            this.pause();
-        } else if (btn.classList.contains('btn-reset')) {
-            this.reset();
-        }
     }
 
     // attachListeners removed as it is no longer used
