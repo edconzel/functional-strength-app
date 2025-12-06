@@ -13,6 +13,30 @@ export class StopwatchTimer extends HTMLElement {
         this.addEventListener('touchstart', (e) => this.handleAction(e), { passive: false });
     }
 
+    disconnectedCallback() {
+        this.pause();
+    }
+
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    render() {
+        this.innerHTML = `
+            <div class="timer-container">
+                <div class="timer-display">${this.formatTime(this.timeLeft)}</div>
+                <div class="timer-controls">
+                    <button class="btn btn-timer btn-start">Start</button>
+                    <button class="btn btn-timer btn-pause" style="display:none">Pause</button>
+                    <button class="btn btn-timer btn-reset">Reset</button>
+                </div>
+            </div>
+        `;
+        this.updateUI();
+    }
+
     handleAction(e) {
         const btn = e.target.closest('.btn-timer');
         if (!btn) return;
