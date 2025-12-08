@@ -1,5 +1,6 @@
 import { exercises } from './data.js';
 import './stopwatch.js';
+import './interval-timer.js';
 
 const app = document.getElementById('app');
 
@@ -111,7 +112,12 @@ const renderDetail = (id) => {
             <div class="card">
                 <div class="card-title">Timer</div>
                 <!-- Web Component -->
-                <stopwatch-timer></stopwatch-timer>
+                <!-- Web Component -->
+                ${ex.intervals ? `
+                    <interval-timer></interval-timer>
+                ` : `
+                    <stopwatch-timer></stopwatch-timer>
+                `}
             </div>
 
             <div class="card">
@@ -150,6 +156,17 @@ const router = () => {
         view.innerHTML = renderList();
     } else {
         view.innerHTML = renderDetail(hash);
+
+        // Post-render init for interval timer
+        const ex = exercises.find(e => e.id === hash);
+        if (ex && ex.intervals) {
+            const timer = view.querySelector('interval-timer');
+            if (timer) {
+                customElements.whenDefined('interval-timer').then(() => {
+                    timer.setIntervals(ex.intervals);
+                });
+            }
+        }
     }
 
     // Ensure separate fade-in if needed, but synchronous for now
