@@ -148,5 +148,19 @@ export const exercises = [
         ],
         type: 'reps',
         inputs: ['reps']
+    },
+    {
+        id: 'fascia-hopping',
+        title: 'Fascia Hopping',
+        summary: 'Rhythmic hopping for fascia elasticity.',
+        icon: './assets/fascia_hopping_icon.png',
+        instructions: [
+            'Stand with feet hip-width apart.',
+            'Hop lightly on the balls of your feet.',
+            'Keep your heels off the ground.',
+            'Maintain a steady rhythm.'
+        ],
+        type: 'timer',
+        defaultDuration: 60
     }
 ];
