@@ -646,3 +646,56 @@ interval-timer .timer-display {
         font-size: 28px;
     }
 }
+/* Left / right selector and per-side bests */
+.side-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.side-btn {
+    flex: 1;
+    min-height: 48px;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.side-bests {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.side-best {
+    flex: 1;
+    padding: 14px 10px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+}
+
+.side-best.leading {
+    border-color: var(--primary);
+}
+
+.side-best-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.side-best-time {
+    margin: 4px 0;
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary);
+}
+
+.side-best-count {
+    color: var(--text-muted);
+    font-size: 12px;
+}
