@@ -243,5 +243,22 @@ export const exercises = [
             }
         ],
         defaultPreset: 1 // Level 2 · Research
+    },
+    {
+        id: 'horse-stance',
+        title: 'Horse Stance',
+        summary: 'Isometric leg strength and posture hold.',
+        icon: './assets/horse_stance_icon.svg',
+        instructions: [
+            '<strong>Wide base:</strong> feet about 1.5–2× shoulder width, toes forward or turned out just a little.',
+            '<strong>Hip height:</strong> sink toward knee height as you are able. Beginners stay higher.',
+            '<strong>Feet and knees:</strong> weight even over the whole foot, mid-foot and heels down. Knees track over the toes and press slightly out — never cave in, and never past the toes.',
+            '<strong>Hips and back:</strong> pelvis neutral, tailbone lightly tucked. No arched lower back, and don\'t stick the butt out. Back straight, torso upright, not leaning forward.',
+            '<strong>Top half:</strong> chest open, shoulders relaxed and down. Head up as if a string lifts the crown, eyes forward. Arms reach forward, or rest fists at the hips.',
+            '<strong>Breathe and build:</strong> slow breaths through the nose — don\'t hold your breath. Start with 20–60 second holds and add time gradually.',
+            'Stop for knee or back pain. If your knees bother you, use a higher stance.'
+        ],
+        type: 'timer',
+        defaultDuration: 60
     }
 ];

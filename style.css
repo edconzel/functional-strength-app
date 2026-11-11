@@ -405,3 +405,104 @@ stopwatch-timer {
     box-shadow: none;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+interval-timer .timer-display {
+    font-size: 64px;
+    line-height: 1;
+    max-width: 100%;
+}
+
+.timer-progress-track {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.timer-progress {
+    height: 100%;
+    width: 0;
+    transition: width 0.1s linear;
+}
+
+.timer-phase {
+    overflow-wrap: break-word;
+}
+
+.cadence-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.cadence-toggle {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 14px;
+}
+
+.bpm-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.bpm-field input {
+    width: 4.75rem;
+    margin: 0;
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.cadence-hint,
+.pace-card p,
+.pace-safety {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.cadence-hint {
+    font-size: 13px;
+    margin: 0 0 14px;
+}
+
+.pace-card p {
+    margin-bottom: 8px;
+}
+
+.pace-hr {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+}
+
+.pace-hint {
+    font-size: 13px;
+}
+
+.pace-safety {
+    font-size: 13px;
+    margin: 0;
+}
+
+@media (max-width: 360px) {
+    interval-timer .timer-display {
+        font-size: 52px;
+    }
+
+    .pace-hr {
+        font-size: 28px;
+    }
+}
