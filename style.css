@@ -209,6 +209,24 @@ label {
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Detail-page cards stack their contents vertically. The base .card
+   rule is a flex row built for the exercise list; without this, the
+   title, controls and timer get squeezed side-by-side and overflow
+   the screen on phones. */
+.detail-view .card {
+    display: block;
+}
+
+interval-timer {
+    display: block;
+    width: 100%;
+}
+
+.timer-container {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
 .detail-header {
     display: flex;
     flex-direction: column;
