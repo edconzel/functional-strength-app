@@ -5,7 +5,7 @@ import {
     startAudioKeepAlive,
     stopAudioKeepAlive,
     unlockAudio
-} from './audio.js?v=4';
+} from './audio.js?v=5';
 
 // Remaining time is derived from a wall-clock end timestamp so a locked or
 // backgrounded phone catches up, including intervals that fully elapsed.
