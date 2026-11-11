@@ -1,23 +1,63 @@
-import { exercises } from './data.js?v=6';
-import { unlockAudio } from './audio.js?v=6';
-import './stopwatch.js?v=6';
-import './interval-timer.js?v=6';
-
-const app = document.getElementById('app');
+import { exercises } from './data.js';
+import { unlockAudio } from './audio.js';
+import './stopwatch.js';
+import './interval-timer.js';
 
 // State
-let currentView = 'list';
 let listMode = 'focus'; // 'list' or 'focus'
-let currentExerciseId = null;
 
 // Utils
+const escapeHtml = (value) => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return 'Unknown date';
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+// "1m 15s", "5m" or "45s" from a minutes value typed or filled into the form.
+const formatDuration = (minutes) => {
+    const total = Math.round(Number(minutes) * 60);
+    if (!Number.isFinite(total) || total <= 0) return null;
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    if (m && s) return `${m}m ${s}s`;
+    return m ? `${m}m` : `${s}s`;
+};
+
+const LOG_PREFIX = 'logs_';
+
+const isLogEntry = (entry) => !!entry
+    && typeof entry === 'object'
+    && typeof entry.date === 'string'
+    && !Number.isNaN(new Date(entry.date).getTime())
+    && !!entry.data
+    && typeof entry.data === 'object'
+    && !Array.isArray(entry.data);
+
+// Never throws: unreadable or damaged history reads as empty rather than
+// breaking the exercise page.
 const getLogs = (id) => {
-    const logs = localStorage.getItem(`logs_${id}`);
-    return logs ? JSON.parse(logs) : [];
+    try {
+        const parsed = JSON.parse(localStorage.getItem(`${LOG_PREFIX}${id}`) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(isLogEntry) : [];
+    } catch (e) {
+        return [];
+    }
+};
+
+const setLogs = (id, logs) => {
+    try {
+        localStorage.setItem(`${LOG_PREFIX}${id}`, JSON.stringify(logs));
+        return true;
+    } catch (e) {
+        return false;
+    }
 };
 
 const addLog = (id, data) => {
@@ -26,7 +66,19 @@ const addLog = (id, data) => {
         date: new Date().toISOString(),
         data
     });
-    localStorage.setItem(`logs_${id}`, JSON.stringify(logs));
+    return setLogs(id, logs);
+};
+
+// Ask the browser not to clear saved history when it is short on space.
+let persistAsked = false;
+const requestPersistentStorage = () => {
+    if (persistAsked) return;
+    persistAsked = true;
+    try {
+        navigator.storage?.persist?.().catch(() => {});
+    } catch (e) {
+        // Not supported; history still saves.
+    }
 };
 
 const storageGet = (key) => {
@@ -74,11 +126,9 @@ const heartRateHtml = (age, showRangeHint) => {
         `;
     }
     const hr = nikoNikoHeartRate(age);
-    const half = age / 2;
-    const halfText = Number.isInteger(half) ? String(half) : String(half);
     return `
         <div class="pace-hr">About ${hr} bpm</div>
-        <p>138 minus half of ${age} (${halfText}) is ${hr}. An approximate guide, not medical advice.</p>
+        <p>138 minus half of ${age} (${age / 2}) is ${hr}. An approximate guide, not medical advice.</p>
     `;
 };
 
@@ -113,6 +163,36 @@ const renderList = () => {
                 </a>
             `).join('')}
         </div>
+
+        <div class="card backup-card">
+            <div class="card-title">Workout History Backup</div>
+            <p class="backup-hint">Your history is stored only in this browser. Export a copy now and then so it can't be lost, and import it to restore or move to another phone.</p>
+            <div class="backup-actions">
+                <button type="button" class="toggle-btn" onclick="window.exportHistory()">Export history</button>
+                <button type="button" class="toggle-btn" onclick="document.getElementById('import-file').click()">Import history</button>
+                <input type="file" id="import-file" accept="application/json,.json" hidden onchange="window.importHistory(this)">
+            </div>
+            <div id="backup-status" class="form-status" role="status"></div>
+        </div>
+    `;
+};
+
+const renderHistory = (id) => {
+    const logs = getLogs(id);
+    if (!logs.length) return '';
+    return `
+        <div class="card">
+            <div class="card-title">History</div>
+            ${logs.map((log, index) => `
+                <div class="history-item">
+                    <div class="history-text">
+                        <div class="history-date">${escapeHtml(formatDate(log.date))}</div>
+                        <div>${Object.entries(log.data).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`).join(' | ')}</div>
+                    </div>
+                    <button type="button" class="history-delete" aria-label="Delete this entry" onclick="window.deleteLog('${id}', ${index})">Delete</button>
+                </div>
+            `).join('')}
+        </div>
     `;
 };
 
@@ -120,7 +200,6 @@ const renderDetail = (id) => {
     const ex = exercises.find(e => e.id === id);
     if (!ex) return '<div>Exercise not found</div>';
 
-    const logs = getLogs(id);
     const isSlowJog = ex.id === 'slow-jogging';
     const cadenceOn = isSlowJog && readCadenceOn();
     const cadenceBpm = readCadenceBpm();
@@ -130,26 +209,24 @@ const renderDetail = (id) => {
     let inputHtml = '';
     if (ex.type === 'reps') {
         inputHtml = `
-            <label>Reps</label>
-            <input type="number" id="input-reps" placeholder="0">
+            <label for="input-reps">Reps</label>
+            <input type="number" id="input-reps" min="0" step="1" inputmode="numeric" placeholder="0">
             ${ex.inputs?.includes('sets') ? `
-                <label>Sets</label>
-                <input type="number" id="input-sets" placeholder="0">
+                <label for="input-sets">Sets</label>
+                <input type="number" id="input-sets" min="0" step="1" inputmode="numeric" placeholder="0">
             ` : ''}
         `;
     } else if (ex.type === 'duration' || ex.type === 'timer') {
         inputHtml = `
-            <label>Duration (minutes)</label>
-            <input type="number" id="input-duration" placeholder="${ex.defaultDuration ? ex.defaultDuration / 60 : 0}">
+            <label for="input-duration">Duration (minutes)</label>
+            <input type="number" id="input-duration" min="0" step="any" inputmode="decimal" placeholder="${ex.defaultDuration ? ex.defaultDuration / 60 : 0}">
         `;
     }
 
-    if (ex.inputs?.includes('notes') || true) {
-        inputHtml += `
-            <label>Notes</label>
-            <textarea id="input-notes" rows="3" placeholder="Add details..."></textarea>
-        `;
-    }
+    inputHtml += `
+        <label for="input-notes">Notes</label>
+        <textarea id="input-notes" rows="3" placeholder="Add details..."></textarea>
+    `;
 
     return `
         <div class="detail-view">
@@ -215,7 +292,7 @@ const renderDetail = (id) => {
                 ${ex.intervals ? `
                     <interval-timer></interval-timer>
                 ` : `
-                    <stopwatch-timer></stopwatch-timer>
+                    <stopwatch-timer exercise-id="${ex.id}" target="${ex.type === 'timer' && ex.defaultDuration ? ex.defaultDuration : 0}"></stopwatch-timer>
                 `}
             </div>
 
@@ -224,20 +301,11 @@ const renderDetail = (id) => {
                 <form id="log-form" onsubmit="event.preventDefault(); window.saveLog('${ex.id}')">
                     ${inputHtml}
                     <button type="submit" class="btn">Save Session</button>
+                    <div id="log-status" class="form-status" role="status"></div>
                 </form>
             </div>
 
-            ${logs.length > 0 ? `
-                <div class="card">
-                    <div class="card-title">History</div>
-                    ${logs.map(log => `
-                        <div class="history-item">
-                            <div style="font-weight:600; font-size:12px; color:rgba(255,255,255,0.5)">${formatDate(log.date)}</div>
-                            <div>${Object.entries(log.data).map(([k, v]) => `${k}: ${v}`).join(' | ')}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : ''}
+            <div id="history">${renderHistory(id)}</div>
         </div>
     `;
 };
@@ -424,7 +492,130 @@ window.setSlowJogAge = (value) => {
     paintHeartRate(null, !partial);
 };
 
-// Global Handlers
+// Log form and history
+const setStatus = (elementId, message, isError = false) => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle('error', isError);
+};
+
+// Redraw only the history, so saving or deleting never resets a running timer.
+const refreshHistory = (id) => {
+    const el = document.getElementById('history');
+    if (el) el.innerHTML = renderHistory(id);
+};
+
+// A timer that pauses or finishes fills in the duration actually done, unless
+// the user has typed their own value.
+document.addEventListener('timer-elapsed', (event) => {
+    const input = document.getElementById('input-duration');
+    const seconds = event.detail?.seconds;
+    if (!input || !Number.isFinite(seconds) || seconds < 1) return;
+    if (input.value !== '' && input.dataset.autofilled !== input.value) return;
+    const minutes = String(Math.round((seconds / 60) * 100) / 100);
+    input.value = minutes;
+    input.dataset.autofilled = minutes;
+});
+
+window.deleteLog = (id, index) => {
+    const logs = getLogs(id);
+    if (index < 0 || index >= logs.length) return;
+    if (!window.confirm('Delete this entry from your history?')) return;
+    logs.splice(index, 1);
+    if (!setLogs(id, logs)) {
+        setStatus('log-status', 'Could not update history. Browser storage is unavailable.', true);
+        return;
+    }
+    refreshHistory(id);
+};
+
+const collectAllLogs = () => {
+    const all = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(LOG_PREFIX)) continue;
+            const id = key.slice(LOG_PREFIX.length);
+            const logs = getLogs(id);
+            if (logs.length) all[id] = logs;
+        }
+    } catch (e) {
+        // Storage unavailable; export what was read.
+    }
+    return all;
+};
+
+window.exportHistory = () => {
+    const logs = collectAllLogs();
+    const count = Object.values(logs).reduce((sum, list) => sum + list.length, 0);
+    if (!count) {
+        setStatus('backup-status', 'No history to export yet.');
+        return;
+    }
+    const payload = {
+        app: 'functional-strength',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        logs
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const now = new Date();
+    const stamp = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+        .map(n => String(n).padStart(2, '0')).join('-');
+    link.download = `functional-strength-history-${stamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus('backup-status', `Exported ${count} ${count === 1 ? 'entry' : 'entries'}.`);
+};
+
+// Import merges with what is already here: nothing is overwritten and
+// entries that already exist are not duplicated.
+window.importHistory = async (input) => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+        const payload = JSON.parse(await file.text());
+        const incoming = payload?.logs;
+        if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+            throw new Error('not a history file');
+        }
+        let added = 0;
+        for (const [id, list] of Object.entries(incoming)) {
+            if (!/^[a-z0-9-]{1,60}$/.test(id) || !Array.isArray(list)) continue;
+            const existing = getLogs(id);
+            const seen = new Set(existing.map(e => `${e.date}|${JSON.stringify(e.data)}`));
+            const fresh = [];
+            for (const entry of list) {
+                if (!isLogEntry(entry)) continue;
+                const clean = { date: entry.date, data: {} };
+                for (const [k, v] of Object.entries(entry.data)) {
+                    if (typeof v === 'string' || typeof v === 'number') clean.data[String(k).slice(0, 40)] = v;
+                }
+                const key = `${clean.date}|${JSON.stringify(clean.data)}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                fresh.push(clean);
+            }
+            if (!fresh.length) continue;
+            const merged = existing.concat(fresh).sort((a, b) => new Date(b.date) - new Date(a.date));
+            if (!setLogs(id, merged)) throw new Error('storage unavailable');
+            added += fresh.length;
+        }
+        setStatus('backup-status', added
+            ? `Imported ${added} new ${added === 1 ? 'entry' : 'entries'}.`
+            : 'Nothing new to import. Everything in that file is already here.');
+    } catch (e) {
+        setStatus('backup-status', 'Could not import that file. Choose a history file exported from this app.', true);
+    }
+};
+
 window.saveLog = (id) => {
     const reps = document.getElementById('input-reps')?.value;
     const sets = document.getElementById('input-sets')?.value;
@@ -435,17 +626,27 @@ window.saveLog = (id) => {
     if (currentSlowJogPreset && currentSlowJogPreset.id === id) data.preset = currentSlowJogPreset.label;
     if (reps) data.reps = reps;
     if (sets) data.sets = sets;
-    if (duration) data.duration = `${duration}m`;
-    if (notes) data.notes = notes;
+    const durationText = duration ? formatDuration(duration) : null;
+    if (durationText) data.duration = durationText;
+    if (notes && notes.trim()) data.notes = notes.trim();
 
-    if (Object.keys(data).length === 0) return;
+    if (Object.keys(data).length === 0) {
+        setStatus('log-status', 'Enter something to save first.', true);
+        return;
+    }
 
-    addLog(id, data);
+    if (!addLog(id, data)) {
+        setStatus('log-status', 'Could not save. Browser storage is full or unavailable.', true);
+        return;
+    }
+    requestPersistentStorage();
 
-    // Refresh view logic without full reload to keep scroll
-    const logs = getLogs(id);
-    // Cheap refresh: just re-route 
-    router();
+    const form = document.getElementById('log-form');
+    if (form) form.reset();
+    const durationInput = document.getElementById('input-duration');
+    if (durationInput) delete durationInput.dataset.autofilled;
+    setStatus('log-status', 'Saved.');
+    refreshHistory(id);
 };
 
 window.toggleViewMode = () => {
@@ -458,4 +659,11 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', router);
 } else {
     router();
+}
+
+// Offline support: after one visit the app opens without a connection.
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
 }

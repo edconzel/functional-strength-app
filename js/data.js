@@ -33,7 +33,7 @@ export const exercises = [
         id: 'foam-roller',
         title: 'Foam Roller',
         summary: 'Myofascial release and recovery.',
-        icon: './assets/foam_roller_icon_1765160768741.png',
+        icon: './assets/foam_roller_icon.png',
         instructions: [
             'Place roller under target muscle group.',
             'Roll slowly back and forth for 30-60 seconds.',
@@ -86,7 +86,7 @@ export const exercises = [
         id: 'indian-clubs',
         title: 'Indian Clubs',
         summary: 'Shoulder mobility and grip strength.',
-        icon: './assets/indian_clubs_icon_1765160596287.png',
+        icon: './assets/indian_clubs_icon.png',
         instructions: [
             'Stand with feet shoulder-width apart.',
             'Swing clubs in circular patterns.',
@@ -100,7 +100,7 @@ export const exercises = [
         id: 'weighted-jump-rope',
         title: 'Weighted Jump Rope',
         summary: 'Cardio with added resistance.',
-        icon: './assets/jump_rope_icon_1765160621133.png',
+        icon: './assets/jump_rope_icon.png',
         instructions: [
             'Hold handles firmly.',
             'Keep elbows close to ribs.',
@@ -114,7 +114,7 @@ export const exercises = [
         id: 'paleo-squats',
         title: 'Paleo Squats',
         summary: 'Deep resting squat for mobility.',
-        icon: './assets/paleo_squats_icon_1765160644641.png',
+        icon: './assets/paleo_squats_icon.png',
         instructions: [
             'Stand feet shoulder-width apart.',
             'Squat down as deep as possible.',
@@ -128,7 +128,7 @@ export const exercises = [
         id: 'vibe-plate',
         title: 'Vibe Plate',
         summary: 'Whole body vibration therapy.',
-        icon: './assets/vibe_plate_icon_1765160662701.png',
+        icon: './assets/vibe_plate_icon.png',
         instructions: [
             'Stand in athletic stance on plate.',
             'Keep knees slightly bent.',
@@ -142,7 +142,7 @@ export const exercises = [
         id: 'yoga',
         title: 'Yoga',
         summary: 'Flexibility, balance, and flow.',
-        icon: './assets/yoga_icon_1765160686809.png',
+        icon: './assets/yoga_icon.png',
         instructions: [
             'Follow your specific flow routine.',
             'Focus on breath control.',
@@ -155,7 +155,7 @@ export const exercises = [
         id: 'plank',
         title: 'Plank',
         summary: 'Core stability hold.',
-        icon: './assets/plank_icon_1765160703767.png',
+        icon: './assets/plank_icon.png',
         instructions: [
             'Forearms on ground, elbows under shoulders.',
             'Body in straight line from head to heels.',
@@ -169,9 +169,9 @@ export const exercises = [
         id: 'somersaults',
         title: 'Somersaults',
         summary: 'Forward rolls for coordination.',
-        icon: './assets/somersaults_icon_1765160825039.png',
+        icon: './assets/somersaults_icon.png',
         instructions: [
-            'Squat down, hands on floor found.',
+            'Squat down, hands on the floor.',
             'Tuck chin to chest.',
             'Push off feet to roll forward.',
             'Protect neck/head, roll on upper back.'

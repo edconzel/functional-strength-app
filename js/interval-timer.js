@@ -5,7 +5,7 @@ import {
     startAudioKeepAlive,
     stopAudioKeepAlive,
     unlockAudio
-} from './audio.js?v=6';
+} from './audio.js';
 
 // Remaining time is derived from a wall-clock end timestamp so a locked or
 // backgrounded phone catches up, including intervals that fully elapsed.
@@ -33,6 +33,7 @@ export class IntervalTimer extends HTMLElement {
         this.cadencePlaying = false;
         this._cueOnNextStart = false;
         this._sessionStarted = false;
+        this._skippedMs = 0;
         this.metronome = createMetronome();
     }
 
@@ -113,6 +114,11 @@ export class IntervalTimer extends HTMLElement {
         const totalMs = this.totalDuration * 1000;
         const progressPercent = totalMs > 0 ? Math.min(100, (this._elapsedMs() / totalMs) * 100) : 0;
         const isWork = currentInterval?.type === 'work';
+        // Count only the work intervals, so walks and rests don't inflate the total.
+        const workTotal = this.intervals.filter(i => i.type === 'work').length;
+        const workNumber = this.intervals
+            .slice(0, this.currentIntervalIndex + 1)
+            .filter(i => i.type === 'work').length;
         const showSkipWarmUp = this._isWarmUp(currentInterval);
         const atOpening = this.currentIntervalIndex === 0
             && this.intervals[0]
@@ -139,7 +145,7 @@ export class IntervalTimer extends HTMLElement {
             <div class="timer-container" style="border-color: ${color}; background: ${bg}; transition: all 0.5s;">
                 ${currentInterval ? `
                     <div style="font-size: 14px; text-transform: uppercase; color: ${color}; letter-spacing: 1px; margin-bottom: 8px;">
-                        ${currentInterval.type === 'rest' ? 'Rest' : `Interval ${this.currentIntervalIndex} / ${this.intervals.length - 1}`}
+                        ${currentInterval.type === 'rest' ? 'Rest' : `Interval ${workNumber} / ${workTotal}`}
                     </div>
                     <div class="timer-phase" style="font-size: 24px; font-weight: 700; margin-bottom: 4px; color: white;">
                         ${currentInterval.name}
@@ -253,8 +259,21 @@ export class IntervalTimer extends HTMLElement {
     }
 
     pause() {
+        const wasRunning = this.isRunning;
         this._halt();
         this.render();
+        if (wasRunning) this._announceElapsed();
+    }
+
+    // Time actually spent, leaving out any warm-up that was skipped. Lets the
+    // page pre-fill the log form.
+    _announceElapsed() {
+        const seconds = Math.floor(Math.max(0, this._elapsedMs() - this._skippedMs) / 1000);
+        if (seconds < 1) return;
+        this.dispatchEvent(new CustomEvent('timer-elapsed', {
+            bubbles: true,
+            detail: { seconds }
+        }));
     }
 
     reset() {
@@ -264,6 +283,7 @@ export class IntervalTimer extends HTMLElement {
         this.lastBeepSecond = null;
         this._cueOnNextStart = false;
         this._sessionStarted = false;
+        this._skippedMs = 0;
         this.remainingMs = this.intervals.length ? this.intervals[0].duration * 1000 : 0;
         this.render();
     }
@@ -282,12 +302,14 @@ export class IntervalTimer extends HTMLElement {
 
         if (this.isRunning) {
             const now = Date.now();
+            this._skippedMs += Math.max(0, this.segmentEndAt - now);
             this.segmentEndAt = now;
             this._catchUp(now);
             return;
         }
 
         const neverStarted = !this._sessionStarted;
+        this._skippedMs += Math.max(0, this.remainingMs);
         this.currentIntervalIndex = nextIndex;
         this.remainingMs = this.intervals[nextIndex].duration * 1000;
         this.segmentEndAt = null;
@@ -323,6 +345,7 @@ export class IntervalTimer extends HTMLElement {
         this._releaseWakeLock();
         playCue('done');
         this.render();
+        this._announceElapsed();
     }
 
     _startTicking() {
