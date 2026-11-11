@@ -28,10 +28,9 @@ const CORE = [
     './assets/kettlebell_icon.png',
     './assets/paleo_squats_icon.png',
     './assets/plank_icon.png',
+    './assets/single_leg_balance_icon.svg',
     './assets/slow_jogging_icon.svg',
-    './assets/somersaults_icon.png',
-    './assets/vibe_plate_icon.png',
-    './assets/yoga_icon.png'
+    './assets/somersaults_icon.png'
 ];
 
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];

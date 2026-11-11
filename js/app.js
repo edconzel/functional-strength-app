@@ -177,21 +177,77 @@ const renderList = () => {
     `;
 };
 
+// Seconds from a saved duration such as "1m 5s", "5m" or "45s".
+const parseDuration = (text) => {
+    const match = /^(?:(\d+)m)?\s*(?:(\d+)s)?$/.exec(String(text ?? '').trim());
+    if (!match || (match[1] == null && match[2] == null)) return null;
+    return Number(match[1] || 0) * 60 + Number(match[2] || 0);
+};
+
+const historyItemHtml = (id, log, index, hideKeys = []) => `
+    <div class="history-item">
+        <div class="history-text">
+            <div class="history-date">${escapeHtml(formatDate(log.date))}</div>
+            <div>${Object.entries(log.data)
+                .filter(([k]) => !hideKeys.includes(k))
+                .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`).join(' | ')}</div>
+        </div>
+        <button type="button" class="history-delete" aria-label="Delete this entry" onclick="window.deleteLog('${id}', ${index})">Delete</button>
+    </div>
+`;
+
+// One history per side (left leg, right leg), each with its best time, so a
+// weaker side is easy to spot.
+const renderSidedHistory = (ex, logs) => {
+    const indexed = logs.map((log, index) => ({ log, index }));
+    const sections = ex.sides.map(side => {
+        const entries = indexed.filter(e => e.log.data.side === side);
+        const times = entries.map(e => parseDuration(e.log.data.duration)).filter(n => n != null);
+        const best = times.length ? Math.max(...times) : null;
+        return { side, entries, best };
+    });
+    const other = indexed.filter(e => !ex.sides.includes(e.log.data.side));
+    const bests = sections.filter(s => s.best != null);
+    const topBest = bests.length ? Math.max(...bests.map(s => s.best)) : null;
+    const uneven = bests.length === ex.sides.length && bests.some(s => s.best !== topBest);
+
+    return `
+        <div class="card side-summary">
+            <div class="card-title">Best Times</div>
+            <div class="side-bests">
+                ${sections.map(s => `
+                    <div class="side-best ${uneven && s.best === topBest ? 'leading' : ''}">
+                        <div class="side-best-label">${escapeHtml(s.side)}</div>
+                        <div class="side-best-time">${s.best != null ? escapeHtml(formatDuration(s.best / 60) ?? '0s') : '--'}</div>
+                        <div class="side-best-count">${s.entries.length} ${s.entries.length === 1 ? 'attempt' : 'attempts'}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ${sections.filter(s => s.entries.length).map(s => `
+            <div class="card">
+                <div class="card-title">${escapeHtml(s.side)} History</div>
+                ${s.entries.map(e => historyItemHtml(ex.id, e.log, e.index, ['side'])).join('')}
+            </div>
+        `).join('')}
+        ${other.length ? `
+            <div class="card">
+                <div class="card-title">Other History</div>
+                ${other.map(e => historyItemHtml(ex.id, e.log, e.index)).join('')}
+            </div>
+        ` : ''}
+    `;
+};
+
 const renderHistory = (id) => {
     const logs = getLogs(id);
     if (!logs.length) return '';
+    const ex = exercises.find(e => e.id === id);
+    if (ex?.sides) return renderSidedHistory(ex, logs);
     return `
         <div class="card">
             <div class="card-title">History</div>
-            ${logs.map((log, index) => `
-                <div class="history-item">
-                    <div class="history-text">
-                        <div class="history-date">${escapeHtml(formatDate(log.date))}</div>
-                        <div>${Object.entries(log.data).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`).join(' | ')}</div>
-                    </div>
-                    <button type="button" class="history-delete" aria-label="Delete this entry" onclick="window.deleteLog('${id}', ${index})">Delete</button>
-                </div>
-            `).join('')}
+            ${logs.map((log, index) => historyItemHtml(id, log, index)).join('')}
         </div>
     `;
 };
@@ -217,7 +273,10 @@ const renderDetail = (id) => {
             ` : ''}
         `;
     } else if (ex.type === 'duration' || ex.type === 'timer') {
-        inputHtml = `
+        inputHtml = ex.durationUnit === 'seconds' ? `
+            <label for="input-duration">Time (seconds)</label>
+            <input type="number" id="input-duration" data-unit="seconds" min="0" step="1" inputmode="numeric" placeholder="0">
+        ` : `
             <label for="input-duration">Duration (minutes)</label>
             <input type="number" id="input-duration" min="0" step="any" inputmode="decimal" placeholder="${ex.defaultDuration ? ex.defaultDuration / 60 : 0}">
         `;
@@ -261,6 +320,13 @@ const renderDetail = (id) => {
 
             <div class="card">
                 <div class="card-title">Timer</div>
+                ${ex.sides ? `
+                    <div class="side-row" role="group" aria-label="Side">
+                        ${ex.sides.map(side => `
+                            <button type="button" class="toggle-btn side-btn ${side === currentSide(ex) ? 'active' : ''}" data-side="${side}" aria-pressed="${side === currentSide(ex) ? 'true' : 'false'}" onclick="window.setSide('${ex.id}', '${side}')">${side}</button>
+                        `).join('')}
+                    </div>
+                ` : ''}
                 ${ex.presets ? `
                     <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
                         ${['Intervals', 'Continuous'].map(mode => `
@@ -300,7 +366,7 @@ const renderDetail = (id) => {
                 <div class="card-title">Log Session</div>
                 <form id="log-form" onsubmit="event.preventDefault(); window.saveLog('${ex.id}')">
                     ${inputHtml}
-                    <button type="submit" class="btn">Save Session</button>
+                    <button type="submit" class="btn" id="save-btn">${ex.sides ? `Save ${currentSide(ex)}` : 'Save Session'}</button>
                     <div id="log-status" class="form-status" role="status"></div>
                 </form>
             </div>
@@ -492,6 +558,27 @@ window.setSlowJogAge = (value) => {
     paintHeartRate(null, !partial);
 };
 
+// Side selection (left or right) for exercises that are logged per side.
+const sideKey = (id) => `side_${id}`;
+
+function currentSide(ex) {
+    const stored = storageGet(sideKey(ex.id));
+    return ex.sides.includes(stored) ? stored : ex.sides[0];
+}
+
+window.setSide = (id, side) => {
+    const ex = exercises.find(e => e.id === id);
+    if (!ex?.sides?.includes(side)) return;
+    storageSet(sideKey(id), side);
+    document.querySelectorAll('[data-side]').forEach(btn => {
+        const active = btn.dataset.side === side;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    const save = document.getElementById('save-btn');
+    if (save) save.textContent = `Save ${side}`;
+};
+
 // Log form and history
 const setStatus = (elementId, message, isError = false) => {
     const el = document.getElementById(elementId);
@@ -513,9 +600,11 @@ document.addEventListener('timer-elapsed', (event) => {
     const seconds = event.detail?.seconds;
     if (!input || !Number.isFinite(seconds) || seconds < 1) return;
     if (input.value !== '' && input.dataset.autofilled !== input.value) return;
-    const minutes = String(Math.round((seconds / 60) * 100) / 100);
-    input.value = minutes;
-    input.dataset.autofilled = minutes;
+    const value = input.dataset.unit === 'seconds'
+        ? String(seconds)
+        : String(Math.round((seconds / 60) * 100) / 100);
+    input.value = value;
+    input.dataset.autofilled = value;
 });
 
 window.deleteLog = (id, index) => {
@@ -619,14 +708,26 @@ window.importHistory = async (input) => {
 window.saveLog = (id) => {
     const reps = document.getElementById('input-reps')?.value;
     const sets = document.getElementById('input-sets')?.value;
-    const duration = document.getElementById('input-duration')?.value;
+    const durationInput = document.getElementById('input-duration');
+    const duration = durationInput?.value;
     const notes = document.getElementById('input-notes')?.value;
+    const ex = exercises.find(e => e.id === id);
 
     const data = {};
+    const side = ex?.sides ? currentSide(ex) : null;
     if (currentSlowJogPreset && currentSlowJogPreset.id === id) data.preset = currentSlowJogPreset.label;
     if (reps) data.reps = reps;
     if (sets) data.sets = sets;
-    const durationText = duration ? formatDuration(duration) : null;
+    const minutes = durationInput?.dataset.unit === 'seconds' ? Number(duration) / 60 : duration;
+    const durationText = duration ? formatDuration(minutes) : null;
+    if (side) {
+        // A side on its own says nothing; the time is the point.
+        if (!durationText) {
+            setStatus('log-status', 'Run the timer or enter a time first.', true);
+            return;
+        }
+        data.side = side;
+    }
     if (durationText) data.duration = durationText;
     if (notes && notes.trim()) data.notes = notes.trim();
 
@@ -643,9 +744,14 @@ window.saveLog = (id) => {
 
     const form = document.getElementById('log-form');
     if (form) form.reset();
-    const durationInput = document.getElementById('input-duration');
     if (durationInput) delete durationInput.dataset.autofilled;
-    setStatus('log-status', 'Saved.');
+    if (side) {
+        // Ready for the next attempt.
+        document.querySelector('stopwatch-timer')?.reset();
+        setStatus('log-status', `Saved ${durationText} for ${side.toLowerCase()}.`);
+    } else {
+        setStatus('log-status', 'Saved.');
+    }
     refreshHistory(id);
 };
 

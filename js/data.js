@@ -125,33 +125,6 @@ export const exercises = [
         defaultDuration: 180
     },
     {
-        id: 'vibe-plate',
-        title: 'Vibe Plate',
-        summary: 'Whole body vibration therapy.',
-        icon: './assets/vibe_plate_icon.png',
-        instructions: [
-            'Stand in athletic stance on plate.',
-            'Keep knees slightly bent.',
-            'Hold for designated time.',
-            'Can perform squats or stretches while vibrating.'
-        ],
-        type: 'timer',
-        defaultDuration: 600
-    },
-    {
-        id: 'yoga',
-        title: 'Yoga',
-        summary: 'Flexibility, balance, and flow.',
-        icon: './assets/yoga_icon.png',
-        instructions: [
-            'Follow your specific flow routine.',
-            'Focus on breath control.',
-            'Move intentionally between poses.'
-        ],
-        type: 'duration',
-        inputs: ['duration', 'notes']
-    },
-    {
         id: 'plank',
         title: 'Plank',
         summary: 'Core stability hold.',
@@ -243,6 +216,22 @@ export const exercises = [
             }
         ],
         defaultPreset: 1 // Level 2 · Research
+    },
+    {
+        id: 'single-leg-balance',
+        title: 'Single-Leg Balance',
+        summary: 'Time how long you can stand on one leg, left versus right.',
+        icon: './assets/single_leg_balance_icon.svg',
+        instructions: [
+            'Stand near a wall or sturdy chair you can grab if you wobble.',
+            'Pick the leg you are standing on, lift the other foot off the floor and tap Start.',
+            'Stand tall, eyes on a fixed point ahead, hands on hips or out to the sides.',
+            'Tap Pause the moment the raised foot touches down, you hop, or you grab for support.',
+            'Save the time, then switch legs. Compare your best on each side over time.'
+        ],
+        type: 'timer',
+        durationUnit: 'seconds',
+        sides: ['Left leg', 'Right leg']
     },
     {
         id: 'horse-stance',
