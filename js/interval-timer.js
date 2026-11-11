@@ -5,7 +5,7 @@ import {
     startAudioKeepAlive,
     stopAudioKeepAlive,
     unlockAudio
-} from './audio.js?v=5';
+} from './audio.js?v=6';
 
 // Remaining time is derived from a wall-clock end timestamp so a locked or
 // backgrounded phone catches up, including intervals that fully elapsed.
@@ -31,6 +31,8 @@ export class IntervalTimer extends HTMLElement {
         this.cadenceEnabled = false;
         this.cadenceBpm = 180;
         this.cadencePlaying = false;
+        this._cueOnNextStart = false;
+        this._sessionStarted = false;
         this.metronome = createMetronome();
     }
 
@@ -111,6 +113,10 @@ export class IntervalTimer extends HTMLElement {
         const totalMs = this.totalDuration * 1000;
         const progressPercent = totalMs > 0 ? Math.min(100, (this._elapsedMs() / totalMs) * 100) : 0;
         const isWork = currentInterval?.type === 'work';
+        const showSkipWarmUp = this._isWarmUp(currentInterval);
+        const atOpening = this.currentIntervalIndex === 0
+            && this.intervals[0]
+            && this.remainingMs >= this.intervals[0].duration * 1000 - 50;
         const urgent = !!(currentInterval && this.isRunning && seconds > 0 && seconds <= 3 && seconds < currentInterval.duration);
         const color = isWork ? 'var(--primary)' : 'var(--text-muted)';
         const bg = isWork ? 'rgba(6, 182, 212, 0.05)' : 'rgba(255, 255, 255, 0.05)';
@@ -160,13 +166,16 @@ export class IntervalTimer extends HTMLElement {
                     </div>
                 `}
 
+                ${showSkipWarmUp ? `
+                    <button type="button" class="btn btn-skip-warmup" onclick="this.closest('interval-timer').skipWarmUp()">Skip warm-up</button>
+                ` : ''}
                 <div class="timer-controls">
                     ${!currentInterval ? `
                         <button type="button" class="btn btn-timer" onclick="this.closest('interval-timer').reset()">Restart Workout</button>
                     ` : `
                         ${!this.isRunning ? `
                             <button type="button" class="btn btn-timer btn-start" onclick="this.closest('interval-timer').start()">
-                                ${this.currentIntervalIndex === 0 && this.remainingMs >= this.intervals[0].duration * 1000 - 50 ? 'Start Workout' : 'Resume'}
+                                ${atOpening || this._cueOnNextStart ? 'Start Workout' : 'Resume'}
                             </button>
                         ` : `
                             <button type="button" class="btn btn-timer btn-pause" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);" onclick="this.closest('interval-timer').pause()">Pause</button>
@@ -229,11 +238,15 @@ export class IntervalTimer extends HTMLElement {
             && this.remainingMs >= this.intervals[0].duration * 1000 - 50;
 
         this.isRunning = true;
+        this._sessionStarted = true;
         this.segmentEndAt = Date.now() + this.remainingMs;
         this.lastBeepSecond = this._displayedSeconds();
         startAudioKeepAlive();
         this._requestWakeLock();
-        if (fresh) playCue(this._cueKind());
+        if (fresh || this._cueOnNextStart) {
+            this._cueOnNextStart = false;
+            playCue(this._cueKind());
+        }
         this._syncCadence();
         this._startTicking();
         this.render();
@@ -249,7 +262,38 @@ export class IntervalTimer extends HTMLElement {
         this._halt();
         this.currentIntervalIndex = 0;
         this.lastBeepSecond = null;
+        this._cueOnNextStart = false;
+        this._sessionStarted = false;
         this.remainingMs = this.intervals.length ? this.intervals[0].duration * 1000 : 0;
+        this.render();
+    }
+
+    _isWarmUp(interval = this.intervals[this.currentIntervalIndex]) {
+        return !this.isComplete && /^warm[\s-]?up\b/i.test(interval?.name || '');
+    }
+
+    // End the warm-up the same way the clock would: the next interval starts
+    // now, with its full duration, one phase cue, and the cadence if this is a jog.
+    skipWarmUp() {
+        if (!this._isWarmUp()) return;
+        const nextIndex = this.currentIntervalIndex + 1;
+        if (nextIndex >= this.intervals.length) return;
+        unlockAudio();
+
+        if (this.isRunning) {
+            const now = Date.now();
+            this.segmentEndAt = now;
+            this._catchUp(now);
+            return;
+        }
+
+        const neverStarted = !this._sessionStarted;
+        this.currentIntervalIndex = nextIndex;
+        this.remainingMs = this.intervals[nextIndex].duration * 1000;
+        this.segmentEndAt = null;
+        this.lastBeepSecond = this._displayedSeconds();
+        this._cueOnNextStart = neverStarted;
+        if (!neverStarted) playCue(this._cueKind());
         this.render();
     }
 
