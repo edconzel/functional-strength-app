@@ -1,6 +1,7 @@
-import { exercises } from './data.js?v=3';
-import './stopwatch.js';
-import './interval-timer.js';
+import { exercises } from './data.js?v=4';
+import { unlockAudio } from './audio.js?v=4';
+import './stopwatch.js?v=4';
+import './interval-timer.js?v=4';
 
 const app = document.getElementById('app');
 
@@ -26,6 +27,64 @@ const addLog = (id, data) => {
         data
     });
     localStorage.setItem(`logs_${id}`, JSON.stringify(logs));
+};
+
+const storageGet = (key) => {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+};
+
+const storageSet = (key, value) => {
+    try { localStorage.setItem(key, value); } catch (e) { /* private mode */ }
+};
+
+const storageRemove = (key) => {
+    try { localStorage.removeItem(key); } catch (e) { /* private mode */ }
+};
+
+const CADENCE_ON_KEY = 'sj_cadence_on';
+const CADENCE_BPM_KEY = 'sj_cadence_bpm';
+const AGE_KEY = 'sj_age';
+const BPM_MIN = 160;
+const BPM_MAX = 190;
+
+const readCadenceOn = () => storageGet(CADENCE_ON_KEY) === '1';
+
+const readCadenceBpm = () => {
+    const n = Number(storageGet(CADENCE_BPM_KEY));
+    if (!Number.isInteger(n) || n < BPM_MIN || n > BPM_MAX) return 180;
+    return n;
+};
+
+const readAge = () => {
+    const raw = storageGet(AGE_KEY);
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 10 || n > 110) return null;
+    return n;
+};
+
+// Tanaka "niko niko" target: about 138 minus half your age.
+const nikoNikoHeartRate = (age) => Math.round(138 - age / 2);
+
+const heartRateHtml = (age, showRangeHint) => {
+    if (age == null) {
+        return `
+            <p>Niko niko target heart rate is about 138 minus half your age.</p>
+            ${showRangeHint ? '<p class="pace-hint">Enter an age from 10 to 110.</p>' : ''}
+        `;
+    }
+    const hr = nikoNikoHeartRate(age);
+    const half = age / 2;
+    const halfText = Number.isInteger(half) ? String(half) : String(half);
+    return `
+        <div class="pace-hr">About ${hr} bpm</div>
+        <p>138 minus half of ${age} (${halfText}) is ${hr}. An approximate guide, not medical advice.</p>
+    `;
+};
+
+const paintHeartRate = (age, showRangeHint = false) => {
+    const el = document.getElementById('sj-hr');
+    if (el) el.innerHTML = heartRateHtml(age, showRangeHint);
 };
 
 // Views
@@ -62,6 +121,10 @@ const renderDetail = (id) => {
     if (!ex) return '<div>Exercise not found</div>';
 
     const logs = getLogs(id);
+    const isSlowJog = ex.id === 'slow-jogging';
+    const cadenceOn = isSlowJog && readCadenceOn();
+    const cadenceBpm = readCadenceBpm();
+    const age = isSlowJog ? readAge() : null;
 
     // Dynamic inputs based on type
     let inputHtml = '';
@@ -109,12 +172,22 @@ const renderDetail = (id) => {
                 </ul>
             </div>
             
+            ${isSlowJog ? `
+                <div class="card pace-card">
+                    <div class="card-title">Pace Guide</div>
+                    <div id="sj-hr">${heartRateHtml(age)}</div>
+                    <label for="sj-age">Your age</label>
+                    <input type="number" id="sj-age" inputmode="numeric" min="10" max="110" autocomplete="off" placeholder="e.g. 64" value="${age ?? ''}" oninput="window.setSlowJogAge(this.value)">
+                    <p class="pace-safety">This is an approximate guide, not medical advice. Check with a doctor before starting a new exercise program, especially if you have a heart condition.</p>
+                </div>
+            ` : ''}
+
             <div class="card">
                 <div class="card-title">Timer</div>
                 ${ex.presets ? `
-                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
                         ${['Intervals', 'Continuous'].map(mode => `
-                            <button class="toggle-btn ${mode === 'Intervals' ? 'active' : ''}" data-sj-mode="${mode}" onclick="window.setSlowJogMode('${ex.id}', '${mode}')">
+                            <button type="button" class="toggle-btn ${mode === 'Intervals' ? 'active' : ''}" data-sj-mode="${mode}" onclick="window.setSlowJogMode('${ex.id}', '${mode}')">
                                 ${mode}
                             </button>
                         `).join('')}
@@ -126,6 +199,17 @@ const renderDetail = (id) => {
                         `).join('')}
                     </select>
                     <div id="sj-preset-summary" style="font-size:13px; color:var(--text-muted); margin:8px 0 16px;"></div>
+                ` : ''}
+                ${isSlowJog ? `
+                    <div class="cadence-row">
+                        <button type="button" id="sj-cadence" class="toggle-btn cadence-toggle ${cadenceOn ? 'active' : ''}" aria-pressed="${cadenceOn ? 'true' : 'false'}" onclick="window.toggleSlowJogCadence()">
+                            Cadence beat: ${cadenceOn ? 'On' : 'Off'}
+                        </button>
+                        <label class="bpm-field" for="sj-bpm">BPM
+                            <input id="sj-bpm" type="number" min="${BPM_MIN}" max="${BPM_MAX}" step="1" inputmode="numeric" autocomplete="off" value="${cadenceBpm}" oninput="window.setSlowJogBpm(this.value)">
+                        </label>
+                    </div>
+                    <p class="cadence-hint">Ticks only during slow-jog intervals, not during walks. About 180 steps per minute.</p>
                 ` : ''}
                 <!-- Web Component -->
                 ${ex.intervals ? `
@@ -187,6 +271,18 @@ const router = () => {
                 });
             }
         }
+        // Chrome may restore a half-typed age over the saved value. The stored age wins.
+        if (ex?.id === 'slow-jogging') {
+            const applyStoredAge = () => {
+                const stored = readAge();
+                const ageInput = document.getElementById('sj-age');
+                if (!ageInput || stored == null) return;
+                ageInput.value = String(stored);
+                paintHeartRate(stored);
+            };
+            applyStoredAge();
+            setTimeout(applyStoredAge, 0);
+        }
     }
 
     // Ensure separate fade-in if needed, but synchronous for now
@@ -196,14 +292,51 @@ const router = () => {
 // Slow Jogging preset handling (mode toggle + preset picker)
 let currentSlowJogPreset = null;
 
+const slowJogTimer = () => document.querySelector('interval-timer');
+
+const sameLoadedPreset = (idx) => {
+    const timer = slowJogTimer();
+    return !!(timer && timer.dataset.presetIndex === String(idx) && timer.intervals?.length);
+};
+
+const confirmDiscard = () => {
+    const timer = slowJogTimer();
+    if (!timer || typeof timer.hasProgress !== 'function' || !timer.hasProgress()) return true;
+    return window.confirm('Discard this workout and switch presets? Your progress will be lost. Cancel keeps the current workout.');
+};
+
+const updateSlowJogModeUI = (mode, idx) => {
+    document.querySelectorAll('[data-sj-mode]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sjMode === mode);
+    });
+    const select = document.getElementById('sj-preset');
+    if (!select) return;
+    select.querySelectorAll('option').forEach(opt => {
+        const visible = opt.dataset.group === mode;
+        opt.hidden = !visible;
+        opt.disabled = !visible;
+    });
+    select.value = String(idx);
+    const chosen = select.querySelector(`option[value="${idx}"]`);
+    if (chosen) chosen.selected = true;
+};
+
+const applyCadenceToTimer = () => {
+    const timer = slowJogTimer();
+    if (!timer || typeof timer.setCadence !== 'function') return;
+    timer.setCadence({ enabled: readCadenceOn(), bpm: readCadenceBpm() });
+};
+
 const applySlowJogPreset = (ex, idx) => {
     const preset = ex.presets?.[idx];
     if (!preset) return;
-    currentSlowJogPreset = { id: ex.id, label: preset.label };
+    currentSlowJogPreset = { id: ex.id, index: idx, label: preset.label, mode: preset.group };
 
-    const timer = document.querySelector('interval-timer');
+    const timer = slowJogTimer();
     if (timer && typeof timer.setIntervals === 'function') {
+        timer.dataset.presetIndex = String(idx);
         timer.setIntervals(preset.intervals);
+        applyCadenceToTimer();
     }
 
     const totalSeconds = preset.intervals.reduce((sum, i) => sum + i.duration, 0);
@@ -213,36 +346,82 @@ const applySlowJogPreset = (ex, idx) => {
     }
 };
 
+const nextIndexForMode = (ex, mode) => {
+    const select = document.getElementById('sj-preset');
+    const baseline = currentSlowJogPreset?.index ?? Number(select?.value ?? ex.defaultPreset ?? 0);
+    const current = ex.presets[baseline];
+    if (current && current.group === mode) return baseline;
+    const match = ex.presets.findIndex(p => p.group === mode);
+    return match >= 0 ? match : 0;
+};
+
 window.setSlowJogMode = (id, mode) => {
     const ex = exercises.find(e => e.id === id);
     if (!ex?.presets) return;
-
-    document.querySelectorAll('[data-sj-mode]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.sjMode === mode);
-    });
-
-    const select = document.getElementById('sj-preset');
-    if (!select) return;
-
-    let firstVisible = null;
-    select.querySelectorAll('option').forEach(opt => {
-        const visible = opt.dataset.group === mode;
-        opt.hidden = !visible;
-        opt.disabled = !visible;
-        if (visible && firstVisible === null) firstVisible = opt.value;
-    });
-
-    const current = ex.presets[Number(select.value)];
-    const keepCurrent = current && current.group === mode;
-    const nextIdx = keepCurrent ? Number(select.value) : Number(firstVisible ?? 0);
-    select.value = String(nextIdx);
+    const nextIdx = nextIndexForMode(ex, mode);
+    if (sameLoadedPreset(nextIdx)) {
+        updateSlowJogModeUI(mode, nextIdx);
+        return;
+    }
+    if (!confirmDiscard()) return;
+    updateSlowJogModeUI(mode, nextIdx);
     applySlowJogPreset(ex, nextIdx);
 };
 
 window.setSlowJogPreset = (id, idx) => {
     const ex = exercises.find(e => e.id === id);
     if (!ex?.presets) return;
-    applySlowJogPreset(ex, Number(idx));
+    const next = Number(idx);
+    if (sameLoadedPreset(next)) return;
+    if (!confirmDiscard()) {
+        if (currentSlowJogPreset) updateSlowJogModeUI(currentSlowJogPreset.mode, currentSlowJogPreset.index);
+        return;
+    }
+    const preset = ex.presets[next];
+    if (preset) updateSlowJogModeUI(preset.group, next);
+    applySlowJogPreset(ex, next);
+};
+
+window.toggleSlowJogCadence = () => {
+    unlockAudio();
+    const next = !readCadenceOn();
+    storageSet(CADENCE_ON_KEY, next ? '1' : '0');
+    const btn = document.getElementById('sj-cadence');
+    if (btn) {
+        btn.classList.toggle('active', next);
+        btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+        btn.textContent = `Cadence beat: ${next ? 'On' : 'Off'}`;
+    }
+    applyCadenceToTimer();
+};
+
+window.setSlowJogBpm = (value) => {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < BPM_MIN || n > BPM_MAX) return;
+    storageSet(CADENCE_BPM_KEY, String(n));
+    applyCadenceToTimer();
+};
+
+window.setSlowJogAge = (value) => {
+    const trimmed = String(value).trim();
+    if (trimmed === '') {
+        storageRemove(AGE_KEY);
+        paintHeartRate(null);
+        return;
+    }
+    if (!/^\d{1,3}$/.test(trimmed)) {
+        paintHeartRate(null);
+        return;
+    }
+    const age = Number(trimmed);
+    if (age >= 10 && age <= 110) {
+        storageSet(AGE_KEY, String(age));
+        paintHeartRate(age);
+        return;
+    }
+    // One digit is usually the start of a two-digit age; don't nag mid-typing.
+    const partial = trimmed.length < 2 && age < 10;
+    paintHeartRate(null, !partial);
 };
 
 // Global Handlers
