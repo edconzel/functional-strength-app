@@ -1,0 +1,11 @@
+{
+  "name": "functional-strength-app",
+  "private": true,
+  "description": "Browser tests for the Functional Strength app. The app itself has no build step and no dependencies.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
