@@ -291,6 +291,81 @@ interval-timer {
     border-bottom: none;
 }
 
+.history-item {
+    gap: 12px;
+}
+
+.history-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.history-date {
+    font-weight: 600;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.history-delete {
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.history-delete:active {
+    color: #fca5a5;
+    border-color: #fca5a5;
+}
+
+.form-status {
+    min-height: 18px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--primary);
+}
+
+.form-status.error {
+    color: #fca5a5;
+}
+
+/* Backup card on the home screen */
+.card.backup-card {
+    display: block;
+    cursor: default;
+    margin-top: 16px;
+}
+
+.card.backup-card:active {
+    transform: none;
+    background: var(--card-bg);
+}
+
+.backup-hint {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.backup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.backup-actions .toggle-btn {
+    min-height: 44px;
+    font-size: 13px;
+}
+
 /* Focus Mode (Snap Scroll) */
 .exercise-list.focus-mode {
     height: 85vh;
@@ -367,6 +442,63 @@ interval-timer {
 stopwatch-timer {
     display: block;
     width: 100%;
+}
+
+stopwatch-timer .timer-display {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+stopwatch-timer[data-target-reached="true"] .timer-display {
+    color: #fbbf24;
+}
+
+.timer-status {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 14px;
+}
+
+.target-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.target-value {
+    min-width: 7.5rem;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.target-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.target-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+stopwatch-timer .btn-pause {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+}
+
+stopwatch-timer .btn-reset {
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
 }
 
 .timer-container {
