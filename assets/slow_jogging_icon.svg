@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <pattern id="checker" width="128" height="128" patternUnits="userSpaceOnUse">
+      <rect width="128" height="128" fill="#131238"/>
+      <rect width="64" height="64" fill="#1d1c52"/>
+      <rect x="64" y="64" width="64" height="64" fill="#1d1c52"/>
+    </pattern>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#checker)"/>
+  <g filter="url(#glow)" stroke="#3ae2ff" stroke-width="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="605" cy="225" r="92"/>
+    <path d="M 540 385 L 395 495 L 425 625"/>
+    <path d="M 545 345 L 505 615"/>
+    <path d="M 548 405 L 685 480 L 765 395"/>
+    <path d="M 505 615 L 660 715 L 645 880"/>
+    <path d="M 505 615 L 365 760 L 245 725"/>
+  </g>
+  <g filter="url(#glow)" fill="#3ae2ff">
+    <circle cx="575" cy="210" r="14"/>
+    <circle cx="640" cy="210" r="14"/>
+  </g>
+  <path d="M 572 262 Q 607 292 642 262" filter="url(#glow)" stroke="#3ae2ff" stroke-width="20" fill="none" stroke-linecap="round"/>
+</svg>

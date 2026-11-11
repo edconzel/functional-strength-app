@@ -1,3 +1,33 @@
+// --- Slow Jogging preset builders ---
+// Research basis (Tanaka "niko niko" pace, Fukuoka University):
+// - Interval trial protocol: 1 min slow jog / 1 min walk, repeated.
+// - Beginner on-ramp used in slow jogging plans: 1 min jog / 2 min walk,
+//   progressing to longer jog / shorter walk, then continuous.
+// - Continuous target: ~30 min at a smile-and-talk pace, splittable
+//   into 10-minute blocks.
+// Every preset includes a 5-minute warm-up walk and a 5-minute
+// cool-down walk.
+const WARM_UP = { name: 'Warm-up Walk', duration: 300, type: 'rest' };
+const COOL_DOWN = { name: 'Cool-down Walk', duration: 300, type: 'rest' };
+
+const buildJogWalkIntervals = (jogSeconds, walkSeconds, rounds) => {
+    const list = [{ ...WARM_UP }];
+    for (let i = 1; i <= rounds; i++) {
+        list.push({ name: `Slow Jog ${i} of ${rounds}`, duration: jogSeconds, type: 'work' });
+        if (i < rounds) {
+            list.push({ name: `Walk ${i} of ${rounds}`, duration: walkSeconds, type: 'rest' });
+        }
+    }
+    list.push({ ...COOL_DOWN });
+    return list;
+};
+
+const buildContinuous = (jogMinutes) => [
+    { ...WARM_UP },
+    { name: 'Slow Jog', duration: jogMinutes * 60, type: 'work' },
+    { ...COOL_DOWN }
+];
+
 export const exercises = [
     {
         id: 'foam-roller',
@@ -162,5 +192,56 @@ export const exercises = [
         ],
         type: 'timer',
         defaultDuration: 60
+    },
+    {
+        id: 'slow-jogging',
+        title: 'Slow Jogging',
+        summary: 'Niko niko pace — jog slow enough to smile and talk.',
+        icon: './assets/slow_jogging_icon.svg',
+        instructions: [
+            '<strong>Niko niko pace:</strong> jog only as fast as you can smile and hold a conversation. If you can\'t talk in full sentences, slow down — even if walkers pass you.',
+            '<strong>Short, quick steps:</strong> aim for ~180 steps per minute, land midfoot with your foot under your hips, not out in front.',
+            '<strong>Stay tall and relaxed:</strong> back straight, chin slightly up, eyes forward, shoulders loose, breathe naturally.',
+            '<strong>Intervals mode:</strong> alternate slow jogging and walking on the timer — the walk breaks are part of the training, not a failure.',
+            '<strong>Continuous mode:</strong> one steady slow jog between the warm-up and cool-down walks. A 30-minute session can also be split into 10-minute blocks across the day.',
+            'Stop if you feel sharp pain, chest discomfort, or spinning dizziness.'
+        ],
+        type: 'timer',
+        defaultDuration: 1800,
+        // Default timer shown before a preset is picked: Level 2 intervals.
+        intervals: buildJogWalkIntervals(60, 60, 10),
+        presets: [
+            {
+                group: 'Intervals',
+                label: 'Level 1 · Starter — Jog 1 min / Walk 2 min × 6',
+                intervals: buildJogWalkIntervals(60, 120, 6)
+            },
+            {
+                group: 'Intervals',
+                label: 'Level 2 · Research — Jog 1 min / Walk 1 min × 10',
+                intervals: buildJogWalkIntervals(60, 60, 10)
+            },
+            {
+                group: 'Intervals',
+                label: 'Level 3 · Build — Jog 5 min / Walk 1 min × 3',
+                intervals: buildJogWalkIntervals(300, 60, 3)
+            },
+            {
+                group: 'Continuous',
+                label: 'Continuous — 10 min jog',
+                intervals: buildContinuous(10)
+            },
+            {
+                group: 'Continuous',
+                label: 'Continuous — 20 min jog',
+                intervals: buildContinuous(20)
+            },
+            {
+                group: 'Continuous',
+                label: 'Continuous — 30 min jog',
+                intervals: buildContinuous(30)
+            }
+        ],
+        defaultPreset: 1 // Level 2 · Research
     }
 ];

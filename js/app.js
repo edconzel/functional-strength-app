@@ -111,7 +111,22 @@ const renderDetail = (id) => {
             
             <div class="card">
                 <div class="card-title">Timer</div>
-                <!-- Web Component -->
+                ${ex.presets ? `
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        ${['Intervals', 'Continuous'].map(mode => `
+                            <button class="toggle-btn ${mode === 'Intervals' ? 'active' : ''}" data-sj-mode="${mode}" onclick="window.setSlowJogMode('${ex.id}', '${mode}')">
+                                ${mode}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <label for="sj-preset">Preset</label>
+                    <select id="sj-preset" onchange="window.setSlowJogPreset('${ex.id}', this.value)">
+                        ${ex.presets.map((p, i) => `
+                            <option value="${i}" data-group="${p.group}" ${i === (ex.defaultPreset ?? 0) ? 'selected' : ''}>${p.label}</option>
+                        `).join('')}
+                    </select>
+                    <div id="sj-preset-summary" style="font-size:13px; color:var(--text-muted); margin:8px 0 16px;"></div>
+                ` : ''}
                 <!-- Web Component -->
                 ${ex.intervals ? `
                     <interval-timer></interval-timer>
@@ -163,7 +178,12 @@ const router = () => {
             const timer = view.querySelector('interval-timer');
             if (timer) {
                 customElements.whenDefined('interval-timer').then(() => {
-                    timer.setIntervals(ex.intervals);
+                    if (ex.presets) {
+                        const defaultIdx = ex.defaultPreset ?? 0;
+                        window.setSlowJogMode(ex.id, ex.presets[defaultIdx].group);
+                    } else {
+                        timer.setIntervals(ex.intervals);
+                    }
                 });
             }
         }
@@ -171,6 +191,58 @@ const router = () => {
 
     // Ensure separate fade-in if needed, but synchronous for now
     view.style.opacity = '1';
+};
+
+// Slow Jogging preset handling (mode toggle + preset picker)
+let currentSlowJogPreset = null;
+
+const applySlowJogPreset = (ex, idx) => {
+    const preset = ex.presets?.[idx];
+    if (!preset) return;
+    currentSlowJogPreset = { id: ex.id, label: preset.label };
+
+    const timer = document.querySelector('interval-timer');
+    if (timer && typeof timer.setIntervals === 'function') {
+        timer.setIntervals(preset.intervals);
+    }
+
+    const totalSeconds = preset.intervals.reduce((sum, i) => sum + i.duration, 0);
+    const summary = document.getElementById('sj-preset-summary');
+    if (summary) {
+        summary.textContent = `${preset.label} · ${Math.round(totalSeconds / 60)} min total, including the 5 min warm-up and 5 min cool-down walks.`;
+    }
+};
+
+window.setSlowJogMode = (id, mode) => {
+    const ex = exercises.find(e => e.id === id);
+    if (!ex?.presets) return;
+
+    document.querySelectorAll('[data-sj-mode]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sjMode === mode);
+    });
+
+    const select = document.getElementById('sj-preset');
+    if (!select) return;
+
+    let firstVisible = null;
+    select.querySelectorAll('option').forEach(opt => {
+        const visible = opt.dataset.group === mode;
+        opt.hidden = !visible;
+        opt.disabled = !visible;
+        if (visible && firstVisible === null) firstVisible = opt.value;
+    });
+
+    const current = ex.presets[Number(select.value)];
+    const keepCurrent = current && current.group === mode;
+    const nextIdx = keepCurrent ? Number(select.value) : Number(firstVisible ?? 0);
+    select.value = String(nextIdx);
+    applySlowJogPreset(ex, nextIdx);
+};
+
+window.setSlowJogPreset = (id, idx) => {
+    const ex = exercises.find(e => e.id === id);
+    if (!ex?.presets) return;
+    applySlowJogPreset(ex, Number(idx));
 };
 
 // Global Handlers
@@ -181,6 +253,7 @@ window.saveLog = (id) => {
     const notes = document.getElementById('input-notes')?.value;
 
     const data = {};
+    if (currentSlowJogPreset && currentSlowJogPreset.id === id) data.preset = currentSlowJogPreset.label;
     if (reps) data.reps = reps;
     if (sets) data.sets = sets;
     if (duration) data.duration = `${duration}m`;

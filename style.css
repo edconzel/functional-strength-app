@@ -167,7 +167,8 @@ h1 {
 }
 
 input,
-textarea {
+textarea,
+select {
     width: 100%;
     padding: 16px;
     background: rgba(0, 0, 0, 0.3);
@@ -182,10 +183,16 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
     outline: none;
     border-color: var(--primary);
     background: rgba(0, 0, 0, 0.5);
+}
+
+select option {
+    color: #111827;
+    background: #ffffff;
 }
 
 label {
