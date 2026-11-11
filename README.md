@@ -43,6 +43,21 @@ Add an entry to the `exercises` array in `js/data.js`.
 Put the icon in `assets/` (256 × 256 is plenty) and add its path to the `CORE`
 list in `sw.js` so it is available offline.
 
+## Tests
+
+Browser tests cover the timers, logging, per-leg history, backup and offline
+support. They need Node.js:
+
+```
+npm install
+npx playwright install chromium   # first time only
+npm test
+```
+
+They also run automatically on every pull request (see the Checks section of
+the pull request on GitHub). The tests live in `tests/`; `AGENTS.md` has the
+ground rules for AI agents working on this repo.
+
 ## Workout history
 
 History is kept in the browser's local storage on the device, and nowhere else.
