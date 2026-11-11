@@ -1,7 +1,7 @@
-import { exercises } from './data.js?v=5';
-import { unlockAudio } from './audio.js?v=5';
-import './stopwatch.js?v=5';
-import './interval-timer.js?v=5';
+import { exercises } from './data.js?v=6';
+import { unlockAudio } from './audio.js?v=6';
+import './stopwatch.js?v=6';
+import './interval-timer.js?v=6';
 
 const app = document.getElementById('app');
 

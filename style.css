@@ -400,6 +400,14 @@ stopwatch-timer {
     margin-top: 0;
 }
 
+.btn-skip-warmup {
+    min-height: 56px;
+    padding: 16px 24px;
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 4px;
+}
+
 .btn-timer.pause {
     background: rgba(255, 255, 255, 0.1);
     box-shadow: none;
