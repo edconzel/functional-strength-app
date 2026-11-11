@@ -699,3 +699,9 @@ interval-timer .timer-display {
     color: var(--text-muted);
     font-size: 12px;
 }
+
+.view-switch {
+    flex-shrink: 0;
+    min-height: 44px;
+    white-space: nowrap;
+}
