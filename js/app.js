@@ -4,7 +4,9 @@ import './stopwatch.js';
 import './interval-timer.js';
 
 // State
-let listMode = 'focus'; // 'list' or 'focus'
+// The app always opens in Focus View. The header button names the view it
+// switches to.
+let listMode = 'focus'; // 'focus' or 'list' (shown as Expanded View)
 
 // Utils
 const escapeHtml = (value) => String(value)
@@ -144,8 +146,8 @@ const renderList = () => {
     return `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
             <h1>Functional Strength</h1>
-            <button class="toggle-btn ${isFocus ? 'active' : ''}" onclick="window.toggleViewMode()">
-                ${isFocus ? 'Focus View' : 'List View'}
+            <button type="button" class="toggle-btn view-switch" onclick="window.toggleViewMode()">
+                ${isFocus ? 'Expanded View' : 'Focus View'}
             </button>
         </div>
         
