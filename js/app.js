@@ -1,4 +1,4 @@
-import { exercises } from './data.js';
+import { exercises } from './data.js?v=2';
 import './stopwatch.js';
 import './interval-timer.js';
 
